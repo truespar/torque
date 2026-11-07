@@ -1,0 +1,6 @@
+# The built Studio is committed, so every clone must build the same one: Vue compiles CRLF
+# sources differently, so the Studio is checked out with LF everywhere
+studio/** text=auto eol=lf
+
+# GitHub's language statistics: the built Studio is generated, not Torque's code
+studio/dist/** linguist-generated

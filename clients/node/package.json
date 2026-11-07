@@ -1,0 +1,30 @@
+{
+  "name": "@truespar/torque-http",
+  "version": "0.7.0",
+  "description": "Official Node.js client for Torque — Truespar's in-memory search engine with a Typesense v30.1 compatible API. Zero dependencies.",
+  "type": "module",
+  "exports": "./src/index.js",
+  "types": "./types/index.d.ts",
+  "engines": { "node": ">=20.0.0" },
+  "license": "MIT OR Apache-2.0",
+  "author": "Truespar",
+  "homepage": "https://truespar.com/torque/docs",
+  "repository": { "type": "git", "url": "https://github.com/truespar/torque", "directory": "clients/node" },
+  "bugs": "https://github.com/truespar/torque/issues",
+  "keywords": [
+    "search",
+    "torque",
+    "typesense",
+    "truespar",
+    "vector-search",
+    "full-text-search",
+    "in-memory"
+  ],
+  "files": [
+    "src",
+    "types"
+  ],
+  "scripts": {
+    "test": "node --test tests/client.test.js"
+  }
+}

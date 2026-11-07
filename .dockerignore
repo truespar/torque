@@ -1,0 +1,9 @@
+target/
+.git/
+studio/node_modules/
+studio/dist/
+bench_data/
+dist/
+quickwit-v*/
+__pycache__/
+*.log

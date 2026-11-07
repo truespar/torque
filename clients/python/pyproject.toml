@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "torque-http"
+version = "0.7.0"
+description = "Official Python client for Torque — Truespar's in-memory search engine with a Typesense v30.1 compatible API. Zero external dependencies."
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Truespar" }]
+keywords = ["search", "torque", "typesense", "truespar", "vector-search"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database :: Front-Ends",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://truespar.com/torque/docs"
+Documentation = "https://truespar.com/torque/docs"
+Repository = "https://github.com/truespar/torque"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/torque_http"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

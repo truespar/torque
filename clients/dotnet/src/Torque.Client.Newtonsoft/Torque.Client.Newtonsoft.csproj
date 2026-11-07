@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <PackageId>Torque.Http.Newtonsoft</PackageId>
+    <Version>0.7.0</Version>
+    <Authors>Truespar</Authors>
+    <Company>Truespar</Company>
+    <Description>Encodes objects as Torque TQBF records exactly as Newtonsoft.Json serializes them with given settings, without writing JSON. For TqbfSegmentBuilder runs.</Description>
+    <PackageTags>search;torque;truespar;tqbf;newtonsoft</PackageTags>
+    <PackageLicenseExpression>MIT OR Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://truespar.com/torque/docs</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/truespar/torque</RepositoryUrl>
+    <Copyright>Copyright 2025-2026 The Intelligence Company AB (publ)</Copyright>
+    <RootNamespace>Torque.Http</RootNamespace>
+    <AssemblyName>Torque.Http.Newtonsoft</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>CS1591</NoWarn>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Torque.Client.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <ProjectReference Include="..\Torque.Client\Torque.Client.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Torque.Client\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>

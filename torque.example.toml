@@ -1,0 +1,131 @@
+# Torque Server Configuration
+#
+# Copy this file to torque.toml and uncomment the settings you need.
+# The server auto-detects torque.toml in the working directory,
+# or pass --config <path> to use a different location.
+#
+# Precedence: CLI args > environment variables > this file > built-in defaults
+
+# Bootstrap API key (auto-generated with a tq_ prefix if omitted)
+# Env: TORQUE_API_KEY
+# api_key = "my-api-key"
+
+# HTTP API listen address
+# Env: TORQUE_API_ADDR
+# api_addr = "0.0.0.0:8108"
+
+# TCP ingest listen address
+# Env: TORQUE_INGEST_ADDR
+# ingest_addr = "0.0.0.0:8109"
+
+# Data directory for persisted JSON (collections, aliases, keys)
+# Env: TORQUE_DATA_DIR
+# data_dir = "./data"
+
+# Log level (trace, debug, info, warn, error)
+# Env: TORQUE_LOG_LEVEL
+# log_level = "info"
+
+# Directory for log files (daily rotation, e.g. torque.log.2026-03-13)
+# When set, logs are written to both stdout and the log file.
+# Env: TORQUE_LOG_DIR
+# log_dir = "/var/log/torque"
+
+# CORS allowed origins
+# Env: TORQUE_CORS_ORIGINS (comma-separated)
+# cors_origins = ["*"]
+
+# IP allowlist for TCP ingest connections (empty = allow all)
+# Env: TORQUE_INGEST_ALLOW (comma-separated)
+# ingest_allow = ["127.0.0.1"]
+
+# IP allowlist for HTTP API connections (empty = allow all)
+# Env: TORQUE_ALLOWED_IPS (comma-separated)
+# allowed_ips = ["127.0.0.1"]
+
+# Allow deleting collections via the API and MCP (default: true)
+# Env: TORQUE_ALLOW_DROP_COLLECTION
+# allow_drop_collection = true
+
+# Serve the embedded Studio web UI (default: true)
+# Env: TORQUE_STUDIO_ENABLED
+# studio_enabled = true
+
+# Suppress the startup banner (default: false). The banner prints the API key
+# and config, so enable this in unattended/cloud deployments where stdout is
+# captured and shipped to logs. Env: TORQUE_QUIET
+# quiet = true
+
+# GPU VRAM budget for dense bitmaps in MB (0 = auto-detect 50% of device VRAM)
+# Env: TORQUE_GPU_VRAM_BUDGET_MB
+# gpu_vram_budget_mb = 0
+
+# Maximum vector memory in GB (prevents OOM on large vector indexes)
+# Env: TORQUE_MAX_VECTOR_MEMORY_GB
+# max_vector_memory_gb = 16
+
+# Maximum HTTP request body size in bytes (default: unlimited)
+# Env: TORQUE_MAX_HTTP_BODY_BYTES
+# max_http_body_bytes = 134217728
+
+# Maximum memory usage as percentage of system RAM
+# Env: TORQUE_MAX_MEMORY_PERCENT
+# max_memory_percent = 90
+
+# Maximum memory usage in bytes (overrides max_memory_percent)
+# Env: TORQUE_MAX_MEMORY_BYTES
+# max_memory_bytes = 0
+
+# Maximum concurrent TCP ingest connections
+# Env: TORQUE_MAX_INGEST_CONNECTIONS
+# max_ingest_connections = 64
+
+# Query timeout in milliseconds
+# Env: TORQUE_QUERY_TIMEOUT_MS
+# query_timeout_ms = 10000
+
+# Studio's Search Assistant - answers questions about the open collection with a
+# model you choose; off unless ai_provider is set. The API key stays on the server.
+# The assistant sees the collection's schema, the editor's search and its timing,
+# never the documents.
+#   "anthropic": the Claude API (key from console.anthropic.com)
+#   "openai":    any OpenAI-compatible Chat Completions endpoint: OpenAI,
+#                Azure OpenAI, Ollama, LM Studio, vLLM, OpenRouter, ...
+# Env: TORQUE_AI_PROVIDER, TORQUE_AI_API_KEY, TORQUE_AI_MODEL,
+#      TORQUE_AI_BASE_URL, TORQUE_AI_MAX_TOKENS, TORQUE_AI_EFFORT
+# ai_provider = "anthropic"
+# ai_api_key = "sk-ant-..."
+# Model: default "claude-opus-5-5" on anthropic; required on openai
+# ai_model = "claude-opus-5-5"
+# Base URL: default https://api.anthropic.com / https://api.openai.com/v1;
+# for a local model, e.g. Ollama: "http://localhost:11434/v1"
+# ai_base_url = "http://localhost:11434/v1"
+# Output tokens per answer (default 64000 on anthropic, the endpoint's own on openai)
+# ai_max_tokens = 64000
+# Claude API effort: low, medium, high, xhigh or max (default: the model's)
+# ai_effort = "medium"
+
+# Path to pre-built studio dist directory (overrides embedded files)
+# Env: TORQUE_STUDIO_DIR
+# studio_dir = "./studio/dist"
+
+# Compaction interval in seconds (0 = disabled)
+# Env: TORQUE_COMPACTION_INTERVAL_SECS
+# compaction_interval_secs = 1800
+
+# Memory pressure compaction threshold as percent of max_memory_bytes (0 = disabled)
+# Env: TORQUE_COMPACTION_MEMORY_THRESHOLD_PERCENT
+# compaction_memory_threshold_percent = 80
+
+# TLS certificate file path (PEM format). Requires --features tls at build time.
+# Env: TORQUE_TLS_CERT
+# tls_cert = "/etc/torque/cert.pem"
+
+# TLS private key file path (PEM format). Requires --features tls at build time.
+# Env: TORQUE_TLS_KEY
+# tls_key = "/etc/torque/key.pem"
+
+# Slow query logging threshold in milliseconds (0 = disabled)
+# Queries exceeding this threshold are logged at WARN level.
+# Env: TORQUE_SLOW_QUERY_MS
+# slow_query_ms = 0

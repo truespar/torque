@@ -1,0 +1,206 @@
+[package]
+name = "torque"
+version = "0.7.0"
+edition = "2024"
+description = "Truespar Torque — in-memory search engine"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/truespar/torque"
+homepage = "https://truespar.com/torque"
+
+[dependencies.getrandom]
+version = "0.3"
+
+[features]
+default = ["native"]
+native = ["dep:clap", "dep:toml", "dep:sysinfo", "dep:fs2", "dep:indicatif", "dep:tracing-appender"]
+jemalloc = ["dep:tikv-jemallocator", "dep:tikv-jemalloc-ctl"]
+cuda = ["dep:cudarc"]
+tls = ["dep:tokio-rustls", "dep:rustls-pemfile"]
+mcp = []
+
+[dependencies]
+# Runtime & HTTP
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "macros", "signal", "sync", "time", "fs"] }
+tokio-stream = "0.1"
+axum = "0.8"
+tower-http = { version = "0.7", features = ["cors", "trace", "limit", "fs", "compression-gzip", "compression-zstd", "timeout"] }
+
+# Data structures
+fst = "0.4"
+# Typo search: Levenshtein automata (Schulz-Mihov) intersected with each term FST
+levenshtein_automata = { version = "=0.2.1", features = ["fst_automaton"] }
+
+# TQBF v3 segment format: document store compression, section checksums
+zstd = "=0.14.0"
+xxhash-rust = { version = "0.8.19", features = ["xxh3"] }
+
+# Concurrency
+arc-swap = "1"
+rayon = "1"
+dashmap = "6"
+
+# Text processing
+rust-stemmers = "1.2"
+deunicode = "1.6"
+# Name matching: Double Metaphone and Daitch-Mokotoff (Apache Commons Codec's, ported; Apache-2.0)
+rphonetic = { version = "4.0.0", default-features = false, features = ["embedded_dm"] }
+
+# Hashing & Auth
+rustc-hash = "2.1"
+hmac = "0.13"
+sha2 = "0.11"
+base64 = "0.22"
+
+# GPU compute (CUDA) — optional, requires NVIDIA GPU + CUDA toolkit
+cudarc = { version = "0.19", features = ["cuda-version-from-build-system", "cublas", "f16"], optional = true }
+bytemuck = { version = "1", features = ["derive"] }
+half = { version = "2", features = ["bytemuck"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_urlencoded = "0.7"
+lz4_flex = "0.13"
+flate2 = "1"
+crc32fast = "1"
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = { version = "0.2", optional = true }
+prometheus-client = "0.25"
+
+# Config
+clap = { version = "4", features = ["derive", "env"], optional = true }
+toml = { version = "1", optional = true }
+
+# System info
+sysinfo = { version = "0.39", optional = true }
+
+# Networking
+socket2 = "0.6"
+
+# Overlay persistence
+
+# Memory-mapped I/O for disk-backed text columns
+memmap2 = "0.9"
+
+# Misc
+regex = "1"
+indicatif = { version = "0.18", optional = true }
+fs2 = { version = "0.4", optional = true }
+
+# HTTP client (Truespar API for Studio, embedding and LLM providers) and file formats
+ureq = { version = "3", features = ["json"] }
+csv = "1"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+# Studio embedding
+include_dir = "0.7"
+
+# TLS (optional — gated behind tls feature)
+tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["ring", "tls12"] }
+rustls-pemfile = { version = "2", optional = true }
+hyper-util = { version = "0.1", features = ["tokio", "http1", "http2", "service", "server-auto"] }
+hyper = { version = "1", features = ["server"] }
+
+# Native allocators
+tikv-jemallocator = { version = "0.7", features = ["profiling", "stats", "background_threads"], optional = true }
+tikv-jemalloc-ctl = { version = "0.7", features = ["stats"], optional = true }
+
+[target.'cfg(target_env = "msvc")'.dependencies]
+mimalloc = { version = "0.1", default-features = false }
+libmimalloc-sys = { version = "0.1", features = ["extended"] }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56"
+windows-service = "0.8"
+
+[dev-dependencies]
+# Reference implementation for the differential tests of crate::bitmap
+roaring = "0.11.3"
+criterion = { version = "0.8", features = ["html_reports"] }
+dhat = "0.3"
+reqwest = { version = "0.13", features = ["json"] }
+tempfile = "3"
+# The HTTP routes called in process (server::model_tests)
+tower = { version = "0.5", features = ["util"] }
+
+# Linux-only profiling tools
+[target.'cfg(unix)'.dev-dependencies]
+pprof = { version = "0.15", features = ["flamegraph"] }
+iai-callgrind = "0.16"
+
+[[bin]]
+name = "torque-server"
+path = "src/main.rs"
+required-features = ["native"]
+
+[[bin]]
+name = "torque-admin"
+path = "src/bin/torque_admin.rs"
+required-features = ["native"]
+
+[[bench]]
+name = "persistence_bench"
+harness = false
+
+[[bench]]
+name = "search_bench"
+harness = false
+
+[[bench]]
+name = "bitmap_bench"
+harness = false
+
+[[bench]]
+name = "text_bench"
+harness = false
+
+[[bench]]
+name = "values_bench"
+harness = false
+
+[[bench]]
+name = "geo_bench"
+harness = false
+
+[[bench]]
+name = "realtime_bench"
+harness = false
+
+# Debug builds default to full DWARF embedded into every binary. Each test
+# binary statically carried a complete copy of every dependency's debug info,
+# and since cargo never collects target/debug/deps, stale hash-suffixed copies
+# accumulate - this tree had reached 101 GB, 57 GB of it duplicate
+# dependency artifacts.
+#
+# line-tables-only keeps file, line and column in backtraces and panic
+# messages. It drops variable and type DWARF, so a debugger cannot inspect
+# locals - set debug = true again while you need that. unpacked leaves the
+# debug info in the .o files instead of copying it into each linked artifact.
+[profile.dev]
+debug = "line-tables-only"
+split-debuginfo = "unpacked"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
+
+# The client SDKs' native library (ffi/torque-build): a Rust failure must reach the caller as an
+# error, so panics unwind to the FFI boundary instead of aborting the host process.
+[profile.ffi]
+inherits = "release"
+panic = "unwind"
+
+[workspace]
+members = [".", "ffi/torque-build"]
+exclude = ["vendor"]
+
+# fst 0.4.7 with builders sized to their keys (vendor/fst/VENDORED.md): its builder sets up a node
+# registry of 20,000 cells for every FST, which cost more than building the small FSTs of a write or
+# of a merge of small segments.
+[patch.crates-io]
+fst = { path = "vendor/fst" }

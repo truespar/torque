@@ -1,0 +1,45 @@
+# Build artifacts
+target/
+/dist/
+clients/python/dist/
+
+# .NET build artifacts (not src/bin/: the Rust binaries' sources)
+clients/dotnet/**/bin/
+clients/dotnet/**/obj/
+bench_clients/**/bin/
+bench_clients/**/obj/
+
+# Python
+__pycache__/
+*.pyc
+
+# Java/Go build artifacts
+bench_clients/java/target/
+bench_clients/go/bench_go
+
+# Node.js
+node_modules/
+
+# Runtime logs
+*.log
+
+# Runtime data (persistence snapshots, Typesense data)
+/data/
+studio/data/
+
+# Benchmark output
+BenchmarkDotNet.Artifacts/
+
+# Studio dependencies (studio/dist is committed: the server embeds it, so a fresh clone builds)
+studio/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Benchmark corpora: multi-hundred-MB fixtures pulled down to run benches
+# against, never inputs to a build. Ignored so `git add -A` cannot commit a
+# 400 MB jsonl by reflex.
+bench_data/

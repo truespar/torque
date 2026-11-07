@@ -1,0 +1,15 @@
+[package]
+name = "torque-build"
+version = "0.7.0"
+edition = "2024"
+description = "Torque segment builder as a native library (C ABI) for the client SDKs"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/truespar/torque"
+
+[lib]
+name = "torque_build"
+crate-type = ["cdylib"]
+
+[dependencies]
+torque = { path = "../.." }
+serde_json = "1"

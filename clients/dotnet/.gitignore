@@ -1,0 +1,8 @@
+bin/
+obj/
+nupkg/
+*.user
+*.suo
+.vs/
+BenchmarkDotNet.Artifacts/
+TestResults/

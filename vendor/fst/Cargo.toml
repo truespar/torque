@@ -1,0 +1,25 @@
+[package]
+name = "fst"
+version = "0.4.7"
+authors = ["Andrew Gallant <jamslam@gmail.com>"]
+description = """
+Use finite state transducers to compactly represents sets or maps of many
+strings (> 1 billion is possible).
+
+Torque's copy of fst 0.4.7 (BurntSushi/fst fbd5992): a builder can be sized to its keys
+(`Builder::memory_sized`, `MapBuilder::memory_sized`). See VENDORED.md.
+"""
+documentation = "https://docs.rs/fst"
+homepage = "https://github.com/BurntSushi/fst"
+repository = "https://github.com/BurntSushi/fst"
+readme = "README.md"
+license = "Unlicense/MIT"
+edition = "2018"
+publish = false
+
+[features]
+default = []
+levenshtein = ["utf8-ranges"]
+
+[dependencies]
+utf8-ranges = { version = "1.0.4", optional = true }

@@ -1,0 +1,6 @@
+[build]
+# Local builds use every instruction this machine has. A binary that travels sets its own
+# RUSTFLAGS or CARGO_ENCODED_RUSTFLAGS, which replace this: a CPU baseline, and
+# --remap-path-prefix for the checkout, CARGO_HOME and RUSTUP_HOME, so panic messages and debug
+# info never name a directory or a user.
+rustflags = ["-C", "target-cpu=native"]

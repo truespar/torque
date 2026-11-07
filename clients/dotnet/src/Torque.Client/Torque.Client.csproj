@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <!-- NuGet package metadata -->
+    <PackageId>Torque.Http</PackageId>
+    <Version>0.7.0</Version>
+    <Authors>Truespar</Authors>
+    <Company>Truespar</Company>
+    <Description>Official .NET client for Torque search engine. TCP binary ingest, HTTP API, and complete TQBF segment files built in-process by the native builder (torque_build). Depends only on System.IO.Hashing (XXH3 section checksums).</Description>
+    <PackageTags>search;torque;truespar;ingest;vector-search</PackageTags>
+    <PackageLicenseExpression>MIT OR Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://truespar.com/torque/docs</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/truespar/torque</RepositoryUrl>
+    <Copyright>Copyright 2025-2026 The Intelligence Company AB (publ)</Copyright>
+    <RootNamespace>Torque.Http</RootNamespace>
+    <AssemblyName>Torque.Http</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>CS1591</NoWarn>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>true</IsPackable>
+
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Torque.Client.Tests" />
+    <InternalsVisibleTo Include="Torque.Client.IntegrationTests" />
+    <InternalsVisibleTo Include="Torque.Client.Benchmarks" />
+    <InternalsVisibleTo Include="Torque.Http.Newtonsoft" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Hashing" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- The native segment builder (ffi/torque-build), built by ffi/torque-build/build_native.ps1: copied next
+       to the assembly for project references, packed per runtime for NuGet. -->
+  <ItemGroup>
+    <None Include="runtimes\win-x64\native\torque_build.dll" Condition="Exists('runtimes\win-x64\native\torque_build.dll')"
+          Link="torque_build.dll" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="runtimes\win-x64\native\" />
+    <None Include="runtimes\linux-x64\native\libtorque_build.so" Condition="Exists('runtimes\linux-x64\native\libtorque_build.so')"
+          Link="libtorque_build.so" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="runtimes\linux-x64\native\" />
+  </ItemGroup>
+</Project>
