@@ -22,15 +22,20 @@ COPY ffi/ ffi/
 COPY --from=studio /src/studio/dist studio/dist/
 
 ENV RUSTFLAGS="--remap-path-prefix=/src=src"
-RUN cargo build --release --features native,tls,mcp
+ARG CARGO_BUILD_JOBS
+RUN --mount=type=cache,target=/src/target \
+    --mount=type=cache,target=/usr/local/cargo/registry \
+    cargo build --release --features native,tls,mcp \
+        ${CARGO_BUILD_JOBS:+--jobs $CARGO_BUILD_JOBS} \
+    && cp target/release/torque-server target/release/torque-admin /usr/local/bin/
 
 # ── Runtime ──────────────────────────────────────────────────
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /src/target/release/torque-server /usr/local/bin/torque-server
-COPY --from=builder /src/target/release/torque-admin /usr/local/bin/torque-admin
+COPY --from=builder /usr/local/bin/torque-server /usr/local/bin/torque-server
+COPY --from=builder /usr/local/bin/torque-admin /usr/local/bin/torque-admin
 
 ENV TORQUE_API_ADDR=0.0.0.0:8108
 ENV TORQUE_INGEST_ADDR=0.0.0.0:8109

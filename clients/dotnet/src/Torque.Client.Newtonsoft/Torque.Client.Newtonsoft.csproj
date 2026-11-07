@@ -13,6 +13,7 @@
     <PackageTags>search;torque;truespar;tqbf;newtonsoft</PackageTags>
     <PackageLicenseExpression>MIT OR Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://truespar.com/torque/docs</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/truespar/torque</RepositoryUrl>
     <Copyright>Copyright 2025-2026 The Intelligence Company AB (publ)</Copyright>
     <RootNamespace>Torque.Http</RootNamespace>
@@ -33,5 +34,6 @@
 
   <ItemGroup>
     <None Include="..\Torque.Client\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 </Project>
