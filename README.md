@@ -154,6 +154,50 @@ The upload example retains the previous collection so you can switch the alias b
 
 Binary import files, docs-only build inputs and finished segments share the `.tqbf` extension but are not interchangeable. Files from `TorqueBinaryWriter` or `export-binary` go through the binary import path and are indexed on the server. `torque-admin build` takes a docs-only file from `TqbfDocsWriter` and produces finished segments that the server can serve without indexing.
 
+## Build a collection from .NET
+
+A nightly rebuild with `Torque.Http` and `Torque.Http.Newtonsoft`: the segment file is built where the data is, uploaded as a new collection, and the alias switched.
+
+```csharp
+using Newtonsoft.Json;
+using Torque.Http;
+using Torque.Http.Exceptions;
+using Torque.Http.Tqbf;
+
+// The schema as POST /collections takes it; the name is the versioned collection
+string schema = """
+{ "name": "companies_20261107", "fields": [
+  { "name": "name", "type": "string" },
+  { "name": "orgNumber", "type": "string" },
+  { "name": "city", "type": "string", "facet": true },
+  { "name": "revenue", "type": "int64", "sort": true } ] }
+""";
+
+var encoder = new TqbfNewtonsoftEncoder(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+using var builder = new TqbfSegmentBuilder(schema, new TqbfSegmentBuildOptions { SpillDirectory = @"D:\build" });
+
+// A run is a stretch of consecutive documents; number runs by the data they cover
+using (TqbfRun run = builder.BeginRun(0))
+{
+    await using var reader = await command.ExecuteReaderAsync();   // the source database
+    while (await reader.ReadAsync())
+        encoder.Add(run, new Company(reader));                      // any object Newtonsoft serializes
+    run.End();
+}
+TqbfSegmentReport report = builder.Finish("companies_20261107.tqbf");
+
+// Upload, point the alias at the new collection, drop the previous one
+var torque = new TorqueHttpClient(new TorqueHttpClientOptions { ApiKey = "your-key", BaseUrl = "http://localhost:8108" });
+await torque.Collections.UploadSegmentsAsync("companies_20261107", ["companies_20261107.tqbf"]);
+string? previous = null;
+try { previous = (await torque.Aliases.GetAsync("companies")).CollectionName; } catch (ObjectNotFoundException) { }
+await torque.Aliases.UpsertAsync("companies", "companies_20261107");
+if (previous is not null && previous != "companies_20261107")
+    await torque.Collections.DeleteAsync(previous);
+```
+
+Runs on several threads build in parallel (`Parallel.For` over key ranges, `BeginRun(i)`); records are laid out in run-key order, so the file is the same whatever the thread timing. Frozen pieces spill to `SpillDirectory`, so memory does not grow with the collection. `report.Documents` and `report.Rejected` say what went in and what the schema refused.
+
 ## Clients
 
 Every client covers the HTTP API, the TCP ingest protocol (`TorqueIngestClient`) and binary import files (`TorqueBinaryWriter`). The .NET client also builds segment files (`TqbfSegmentBuilder`).
