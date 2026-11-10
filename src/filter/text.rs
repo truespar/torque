@@ -50,6 +50,19 @@ pub fn value_holds(value: &str, filter: &TextFilter, schema: &Schema, def: &Fiel
     filter.holds(&terms.slices())
 }
 
+/// Whether one element of document `doc`'s array field `def` holds the filter's words and no other,
+/// in any order, from its stored text (in the document's language, as the text index holds it).
+pub fn element_is(seg: &Segment, doc: DocId, filter: &TextFilter, schema: &Schema, def: &FieldDef) -> bool {
+    let Some(d) = seg.get_doc(doc, schema) else { return false };
+    let Some(FieldValue::StringArray(items)) = d.fields.get(def.id as usize) else { return false };
+    let mut terms = Terms::default();
+    items.iter().flatten().any(|text| {
+        terms.read(text, schema, def, d.language);
+        let value = terms.slices();
+        value.len() == filter.terms.len() && filter.holds(&value)
+    })
+}
+
 // -- the text index ----------------------------------------------------------------------------------
 
 /// The documents holding the `k`-th term in one of its forms (None: none does).

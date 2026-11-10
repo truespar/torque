@@ -54,7 +54,8 @@ pub fn compute_bm25(tf: u32, doc_length: u32, avg_doc_length: f32, idf: f32) -> 
 /// 63..56  words matched
 /// 55..50  63 - typos summed over the words (a phonetic or fold match counts as its cost)
 /// 49..44  63 - words matched by completing a prefix or inside a term
-/// 43      the words are a field's whole value (prioritize_exact_match)
+/// 43      the words are a field's whole value, or one array element's (prioritize_exact_match;
+///         under max_weight only the heaviest fields count)
 /// 42..40  fields matched, at most 7 (prioritize_num_matching_fields)
 /// 39..7   BM25F score, in 1/100,000
 /// 6..0    the weight of the field that gave it
@@ -74,6 +75,9 @@ const SCORE_SCALE: f32 = 100_000.0;
 const SCORE_MAX: u64 = (1 << 33) - 1;
 
 impl Rank {
+    /// `exact` in a packed rank.
+    pub const EXACT: u64 = 1 << 43;
+
     pub fn pack(&self) -> u64 {
         let score = ((self.score * SCORE_SCALE) as u64).min(SCORE_MAX);
         u64::from(self.words.min(255)) << 56

@@ -23,10 +23,11 @@ use crate::filter::{Match, TextFilter};
 use crate::index::inverted::{InvertedIndex, TermEntry, TermRef};
 use crate::index::Index;
 use crate::names::Channel;
-use crate::schema::{DocId, FieldDef, FieldId, Language, Schema};
+use crate::schema::{DocId, FieldDef, FieldId, FieldType, Language, Schema};
 use crate::text::Analyzer;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cell::{Cell, RefCell};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -41,6 +42,9 @@ const MAX_TYPO_TOKEN_CHARS: usize = 64;
 const MAX_INFIX_EXPANSIONS: usize = 100;
 /// Documents scored between two looks at the clock.
 const DEADLINE_CHUNK: usize = 4096;
+/// At most this many documents, in all segments, are read for an array element holding exactly the
+/// words (`Search::settle`): each costs decoding a stored document.
+const UNSURE_MAX: usize = 1000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Infix {
@@ -367,6 +371,16 @@ struct Pending {
     docs: Bitmap,
 }
 
+/// Documents of segment `seg` matched by `words` of variant `variant`, each with an array field (by
+/// index) whose whole value counts that holds every word, and other words besides: one of its
+/// elements may hold exactly the words, which only the stored text tells.
+struct Unsure {
+    variant: usize,
+    words: Vec<usize>,
+    seg: usize,
+    docs: Vec<(DocId, usize)>,
+}
+
 /// The collection's live statistics of a field.
 struct FieldStats {
     avg_length: f32,
@@ -389,6 +403,7 @@ struct Search<'a, 's> {
     variants: Cell<usize>,
     /// With `pick`: the documents found, ranked once the search is done.
     pending: Option<Vec<Pending>>,
+    unsure: Vec<Unsure>,
 }
 
 impl<'a, 's> Search<'a, 's> {
@@ -424,6 +439,7 @@ impl<'a, 's> Search<'a, 's> {
             analyzer: RefCell::default(),
             variants: Cell::new(0),
             pending: None,
+            unsure: Vec::new(),
         }
     }
 
@@ -716,7 +732,10 @@ impl<'a, 's> Search<'a, 's> {
             return self.rank_by_terms(v, words, lens, s, docs);
         }
         let params = self.params;
-        let n_fields = self.fields.len();
+        let fields = self.fields;
+        let n_fields = fields.len();
+        let whole = self.whole_counts();
+        let mut unsure = Vec::new();
         let mut cursors: Vec<Vec<_>> = words.iter().map(|&w| v.segs[s][w].terms.iter().map(|t| t.entry.cursor()).collect()).collect();
         let invs: Vec<Option<&InvertedIndex>> = self.fields.iter().map(|f| f.invs[s]).collect();
         let mut field_score = vec![0f32; n_fields];
@@ -763,12 +782,23 @@ impl<'a, 's> Search<'a, 's> {
             let (score, weight) = params.match_type.combine(weighted);
             rank.score = score;
             rank.weight = weight;
-            rank.exact = params.prioritize_exact_match && (0..n_fields).any(|f| exact_words[f] == words.len() && lengths[f] as usize == words.len());
+            if params.prioritize_exact_match {
+                // every word as written, in a field whose whole value counts
+                let all = |f: usize| exact_words[f] == words.len() && whole[f];
+                rank.exact = (0..n_fields).any(|f| all(f) && lengths[f] as usize == words.len());
+                if !rank.exact {
+                    let arrays = (0..n_fields).filter(|&f| all(f) && fields[f].def.field_type == FieldType::StringArray);
+                    unsure.extend(arrays.max_by_key(|&f| fields[f].weight).map(|f| (doc, f)));
+                }
+            }
             if params.prioritize_num_matching_fields {
                 rank.fields = field_score.iter().filter(|&&s| s > 0.0).count() as u32;
             }
             self.scores[s].set(doc, rank.pack(), total_docs);
             done.push(doc);
+        }
+        if !unsure.is_empty() {
+            self.unsure.push(Unsure { variant: v.id, words: words.to_vec(), seg: s, docs: unsure });
         }
         done
     }
@@ -780,7 +810,10 @@ impl<'a, 's> Search<'a, 's> {
     fn rank_by_terms(&mut self, v: &Variant, words: &[usize], lens: Option<&[usize]>, s: usize, docs: &Bitmap) -> Vec<DocId> {
         const WINDOW: u32 = 4096;
         let params = self.params;
-        let n_fields = self.fields.len();
+        let fields = self.fields;
+        let n_fields = fields.len();
+        let whole = self.whole_counts();
+        let mut unsure = Vec::new();
         let total_docs = self.segs[s].index.total_docs();
         let invs: Vec<Option<&InvertedIndex>> = self.fields.iter().map(|f| f.invs[s]).collect();
         // per word its candidates, each with its postings read once, in order, across the windows
@@ -860,7 +893,14 @@ impl<'a, 's> Search<'a, 's> {
                 let (score, weight) = params.match_type.combine(weighted);
                 rank.score = score;
                 rank.weight = weight;
-                rank.exact = params.prioritize_exact_match && (0..n_fields).any(|f| ew[f] as usize == words.len() && ls[f] as usize == words.len());
+                if params.prioritize_exact_match {
+                    let all = |f: usize| ew[f] as usize == words.len() && whole[f];
+                    rank.exact = (0..n_fields).any(|f| all(f) && ls[f] as usize == words.len());
+                    if !rank.exact {
+                        let arrays = (0..n_fields).filter(|&f| all(f) && fields[f].def.field_type == FieldType::StringArray);
+                        unsure.extend(arrays.max_by_key(|&f| fields[f].weight).map(|f| (doc, f)));
+                    }
+                }
                 if params.prioritize_num_matching_fields {
                     rank.fields = fs.iter().filter(|&&s| s > 0.0).count() as u32;
                 }
@@ -876,7 +916,59 @@ impl<'a, 's> Search<'a, 's> {
                 is_cand[i / 64] = 0;
             }
         }
+        if !unsure.is_empty() {
+            self.unsure.push(Unsure { variant: v.id, words: words.to_vec(), seg: s, docs: unsure });
+        }
         done
+    }
+
+    /// Per field whether its whole value holding the words ranks a document first
+    /// (`prioritize_exact_match`): any field's, but under max_weight, where the heaviest field
+    /// matched decides, only the heaviest fields'.
+    fn whole_counts(&self) -> Vec<bool> {
+        let top = self.fields.iter().map(|f| f.weight).max().unwrap_or(0);
+        self.fields.iter().map(|f| self.params.match_type != MatchType::MaxWeight || f.weight == top).collect()
+    }
+
+    /// The unsure documents with an array element of exactly the words (in any order) match whole,
+    /// read from their stored text: those of the heaviest fields first, all of a weight or none, at
+    /// most `UNSURE_MAX`.
+    fn settle(&mut self, variants: &[Variant]) {
+        let mut per_weight: BTreeMap<u32, usize> = BTreeMap::new();
+        for u in &self.unsure {
+            for &(_, f) in &u.docs {
+                *per_weight.entry(self.fields[f].weight).or_default() += 1;
+            }
+        }
+        let (mut room, mut lightest) = (UNSURE_MAX, u32::MAX);
+        for (&weight, &n) in per_weight.iter().rev() {
+            if n > room {
+                break;
+            }
+            room -= n;
+            lightest = weight;
+        }
+        for u in std::mem::take(&mut self.unsure) {
+            let v = variants.iter().find(|v| v.id == u.variant).expect("an unsure round's variant");
+            let value = u.words.iter().map(|&w| v.words[w].raw.as_str()).collect::<Vec<_>>().join(" ");
+            let index = self.segs[u.seg].index;
+            let mut filters: FxHashMap<usize, Option<TextFilter>> = FxHashMap::default();
+            for (i, (doc, f)) in u.docs.into_iter().enumerate() {
+                if i % 64 == 0 && self.params.deadline.passed() {
+                    self.cutoff = true;
+                    return;
+                }
+                if self.fields[f].weight < lightest {
+                    continue;
+                }
+                let def = self.fields[f].def;
+                let filter = filters.entry(f).or_insert_with(|| TextFilter::new(&value, Match::Words, self.schema, def));
+                if filter.as_ref().is_some_and(|filter| crate::filter::text::element_is(index, doc, filter, self.schema, def)) {
+                    let rank = self.scores[u.seg].get(doc);
+                    self.scores[u.seg].set(doc, rank | Rank::EXACT, index.total_docs());
+                }
+            }
+        }
     }
 
     /// The word split in two or joined with the next, wherever the pieces are terms of a field.
@@ -1064,6 +1156,9 @@ pub fn search<'s>(
                 search.rank(v, &p.words, Some(&p.lens), p.seg, &docs);
             }
         }
+    }
+    if !search.cutoff {
+        search.settle(&variants);
     }
 
     for v in &variants {

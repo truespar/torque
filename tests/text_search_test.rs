@@ -171,6 +171,51 @@ fn a_field_holding_just_the_query_ranks_first() {
 }
 
 #[test]
+fn an_array_element_holding_just_the_query_ranks_first() {
+    // the old name lengthens the field, which alone would put the shorter name first
+    let f = fixture(
+        json!({"name": "c", "fields": [{"name": "t", "type": "string[]"}]}),
+        &[json!({"id": "1", "t": ["northvolt ett ab"]}), json!({"id": "2", "t": ["northvolt ab", "sgf energy"]})],
+    );
+    assert_eq!(f.q("northvolt ab"), ["2", "1"]);
+    assert_eq!(f.q("ab northvolt"), ["2", "1"]);
+}
+
+#[test]
+fn under_max_weight_a_lighter_field_holding_just_the_query_does_not_rank_first() {
+    // subsidiaries' and housing cooperatives' c/o line is the parent's name, one of the parent's names
+    let f = fixture(
+        json!({"name": "c", "fields": [{"name": "names", "type": "string[]"}, {"name": "co", "type": "string", "optional": true}]}),
+        &[
+            json!({"id": "parent", "names": ["Skanska Sverige AB", "Skanska Nya Hem"]}),
+            json!({"id": "subsidiary", "names": ["Skanska Elproducent AB"], "co": "Skanska Sverige AB"}),
+            json!({"id": "cooperative", "names": ["Brf Guldkanten"], "co": "Skanska Sverige AB"}),
+            json!({"id": "sibling", "names": ["Skanska Sverige Inköp AB"]}),
+        ],
+    );
+    let p = |match_type: Option<&str>| SearchParams {
+        query_by: vec!["names".into(), "co".into()],
+        query_by_weights: Some("10,1".into()),
+        text_match_type: match_type.map(Into::into),
+        prioritize_num_matching_fields: Some(false),
+        ..params("skanska sverige ab")
+    };
+    assert_eq!(f.ids(&p(Some("max_weight"))), ["parent", "sibling", "subsidiary", "cooperative"]);
+    assert_eq!(f.ids(&p(None)), ["parent", "subsidiary", "cooperative", "sibling"]);
+}
+
+#[test]
+fn many_lighter_arrays_to_read_leave_the_heavier_ones_read() {
+    // the operator's name on the phone numbers of associations, too many of them to read
+    let mut docs = vec![json!({"id": "telia", "names": ["telia sverige ab", "telia ab"], "ops": []})];
+    docs.extend((0..1200).map(|i| json!({"id": format!("many{i}"), "names": [format!("förening {i}")], "ops": ["telia sverige ab", "tele2 sverige ab"]})));
+    docs.push(json!({"id": "one", "names": ["förening"], "ops": ["telia sverige ab"]}));
+    let f = fixture(json!({"name": "c", "fields": [{"name": "names", "type": "string[]"}, {"name": "ops", "type": "string[]"}]}), &docs);
+    let p = SearchParams { query_by: vec!["names".into(), "ops".into()], query_by_weights: Some("10,3".into()), ..params("telia sverige ab") };
+    assert_eq!(f.ids(&p)[..2], ["telia", "one"]);
+}
+
+#[test]
 fn earlier_fields_weigh_more_and_given_weights_count() {
     let f = fixture(
         json!({"name": "c", "fields": [{"name": "a", "type": "string"}, {"name": "b", "type": "string"}]}),
